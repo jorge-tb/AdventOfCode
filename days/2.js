@@ -155,8 +155,6 @@ function isSafe(report, threshold) {
     if (!hasValidAdjacentDiff(report, threshold, valids))
         return false;
 
-    console.log(`valids = ${JSON.stringify(valids)}`);
-
     let isSafe = false;
     valids.forEach(v => {
         isSafe ||= isAsc(v.report, v.threshold.clone());
