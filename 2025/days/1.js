@@ -19,10 +19,14 @@ class Dial {
         if (n < 0)
             throw new Error('Number of movements to the left must be greater or equal to 0');
         this.position = this.position - n % (this.min + this.max + 1);
-        if (this.position < 0)
-            this.position += this.max + 1;
+         if (this.position < 0)
+             this.position += this.max + 1;
     }
 }
+
+const directions = {
+    right: 'R', left: 'L'
+};
 
 /**
  * Returns the password.
@@ -32,25 +36,18 @@ class Dial {
  * @returns Number of times dial marks 0 after any rotation in the sequence.
  */
 function computePassword(movements, dial) {
-    const right = 'R';
-    const left = 'L';
     let direction;
     let totalMove;
     return movements.reduce((zeroCount, move) => {
         direction = move[0];
         totalMove = Number(move.substring(1));
-        if (direction === right) {
-            console.log(`[${move}] from position ${dial.position} to the right ${totalMove} positions`);
+        if (direction === directions.right) {
             dial.moveRight(totalMove);
-        } else if (direction === left) {
-            console.log(`[${move}] from position ${dial.position} to the left ${totalMove} position`);
+        } else if (direction === directions.left) {
             dial.moveLeft(totalMove);
         }
 
-        console.log(`ending at position = ${dial.position}`);
-
         if (dial.position === 0) {
-            console.log(`zero!`);
             zeroCount++
         }
 
@@ -58,6 +55,55 @@ function computePassword(movements, dial) {
     }, 0);
 }
 
-const dial = new Dial(0, 99, 50);
-const password = computePassword(data.input, dial);
-console.log(`password = ${password}`);
+function computePassword_v2(movements, dial) {
+    const totalDial = dial.max - dial.min + 1;
+
+    let direction;
+    let totalMove;
+    let offset;
+    let oldPosition;
+    let zeroPasses;
+
+    return movements.reduce((zeroCount, move) => {
+        direction = move[0];
+        totalMove = Number(move.substring(1));
+        offset = totalMove % totalDial;
+        oldPosition = dial.position;
+        zeroPasses = Math.floor(totalMove / totalDial);
+
+        if (direction === directions.right) {
+            dial.moveRight(totalMove);
+            if (oldPosition + offset > totalDial && oldPosition)
+                zeroPasses += 1;
+        } else if (direction === directions.left) {
+            dial.moveLeft(totalMove);
+            if (oldPosition < offset && oldPosition)
+                zeroPasses += 1;
+        }
+
+        if (dial.position === 0 && oldPosition) {
+            zeroCount++
+        }
+
+        zeroCount += zeroPasses;
+
+        return zeroCount;
+    }, 0);
+}
+
+
+function answer_part1() {
+    const dial = new Dial(0, 99, 50);
+    const password = computePassword(data.input, dial);
+    console.log(`(v1) password = ${password}`);
+}
+
+function answer_part2() {
+    const dial = new Dial(0, 99, 50);
+    const password = computePassword_v2(data.input, dial);
+    console.log(`(v2) password = ${password}`);
+}
+
+answer_part1();
+
+answer_part2();
