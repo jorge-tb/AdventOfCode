@@ -1,4 +1,4 @@
-import { AdventClient } from "../client.js";
+import { AdventClient } from "../../client.js";
 
 async function createInput() {
     // obtain input from Advent web client

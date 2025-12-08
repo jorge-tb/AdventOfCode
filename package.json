@@ -6,8 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "client": "node --env-file=.env client",
-    "day:1": "node --env-file=.env days/1",
-    "day:2": "node --env-file=.env days/2"
+    "day:1": "node --env-file=.env 2024/days/1",
+    "day:2": "node --env-file=.env 2024/days/2"
   },
   "author": "",
   "license": "ISC",

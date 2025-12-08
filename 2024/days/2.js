@@ -1,4 +1,4 @@
-import { AdventClient } from "../client.js";
+import { AdventClient } from "../../client.js";
 
 const MIN_DIFF = 1;
 const MAX_DIFF = 3;
