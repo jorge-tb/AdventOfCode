@@ -1,8 +1,4 @@
 import fs from 'fs';
-/**
- * [.@.@@...@]
- * [.@@@...@@]
- */
 
 function readExample() {
     const exampleText = `
@@ -75,24 +71,71 @@ function buildAdjacentMatrix(input) {
 function isOccupied(matrix, i, j) {
     if (i < 0 || j < 0)
         return false;
+    else if (i >= matrix.length || j >= matrix[i].length)
+        return false;
     else if (matrix[i][j] > 0)
         return true;
     else
         return false;
 }
 
+/**
+ * Removes an element located at [i][j] coordinates and decrements contigous occupied cells in one unit.
+ * @param {Array<Array<number>>} matrix 
+ * @param {number} i 
+ * @param {number} j 
+ */
+function remove(matrix, i, j) {
+    if (!isOccupied(matrix, i, j)) 
+        return;
+
+    matrix[i][j] = 1;
+    for (let x = -1; x < 2; x++) {
+        for (let y = -1; y < 2; y++) {
+            if (isOccupied(matrix, i + x, j + y))
+                matrix[i + x][j + y] -= 1;
+        }
+    }
+}
+
 function answer_part1() {
-    const input = readInput(); // readExample();
+    const input = readInput();
     const matrix = buildAdjacentMatrix(input);
     let total = 0;
-    matrix.
-        forEach(row => {
-            row.forEach(e => {
-                if (e > 0 && e < 5)
-                    total++;
-            });
+    matrix.forEach(row => {
+        row.forEach(e => {
+            if (e > 0 && e < 5)
+                total++;
         });
+    });
     console.log(`Total '@' elements with less than 4 contigous '@' is: ${total}`);
 }
 
+function answer_part2() {
+    const input = readInput();
+    const matrix = buildAdjacentMatrix(input);
+    const toDelete = [];
+    let total = 0;
+    let done = false;
+    while (!done) {
+        matrix.forEach((row, i) => {
+            row.forEach((e, j) => {
+                if (e > 0 && e < 5)
+                    toDelete.push([i, j]);
+            });      
+        });
+
+        if (toDelete.length) {
+            total += toDelete.length;
+            toDelete.forEach(([i, j]) => remove(matrix, i, j));
+            toDelete.length = 0;
+        } else {
+            done = true;
+        }
+    }
+    console.log(`Total '@' elements that can be removed is: ${total}`);
+}
+
 answer_part1();
+
+answer_part2();
