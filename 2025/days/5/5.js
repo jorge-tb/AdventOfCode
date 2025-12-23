@@ -11,7 +11,6 @@ class Range {
     }
 
     combine(range) {
-        // min1,max1  min,max  min2,max2
         if (range.max < this.min || range.min > this.max)
             return false;
 
