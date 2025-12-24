@@ -27,7 +27,7 @@ function readInput_v2() {
         for (let j = 0; j < split.length; j++) {
             if (split[j][i] === '*' || split[j][i] === '+')
                 operator = split[j][i];
-            else if (split[j][i] !== ' ') // === not equal to ''
+            else if (split[j][i] !== ' ')
                 number.push(split[j][i])
         }
 
