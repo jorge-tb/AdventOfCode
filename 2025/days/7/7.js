@@ -136,46 +136,39 @@ function readExample_5() {
  */
 function processTachyon(splitMap) {
     let lineIdx = 0;
+    // Improvement: use a Map instead, where key is JSON.stringify(t) and value is t (t=tachyon instance),
+    // then you can ensure non-duplicated elements and retrieving Tachyon[] instead of a list of tachyons JSON strigified.
+    const tachyonSet = new Set();
     const tachyons = []
     const startIdx = splitMap[lineIdx].indexOf('S');
-    if (startIdx !== -1)
-        tachyons.push(new Tachyon(startIdx, lineIdx));
+    if (startIdx !== -1) {
+        let tachyon = new Tachyon(startIdx, lineIdx);
+        tachyons.push(tachyon);
+        tachyonSet.add(JSON.stringify(tachyon));
+    }
 
+    let row, trace;
     while(lineIdx < splitMap.length) {
         tachyons
             .filter(t => !t.isSplit)
             .forEach(t => {
                 t.y = lineIdx;
-                let row = splitMap[lineIdx];
-                let trace = row;
+                row = splitMap[lineIdx];
+                trace = row;
                 if (row[t.x] === '^') {
                     const { left, right } = t.split();
                     // Improvement: non-duplicated data structure (like Set) suits better for this use case
-                    let slLeft = row.slice(0, left.x + 1);
-                    let slRight = row.slice(right.x);
-
-                    let leftDotIdx = slLeft.lastIndexOf('.');
-                    let leftPipeIdx = slLeft.lastIndexOf('|');
-                    let rightDotIdx = slRight.indexOf('.');
-                    let rightPipeIdx = slRight.indexOf('|');
-
-                    left.x = leftDotIdx > leftPipeIdx || leftPipeIdx === -1 ? 
-                        leftDotIdx : leftPipeIdx;
-                    right.x += rightDotIdx < rightPipeIdx || rightPipeIdx === -1 ? 
-                        rightDotIdx : rightPipeIdx;
-
-                    if (!tachyons.some(t => t.equal(left))) {
+                    if (!tachyonSet.has(JSON.stringify(left))) {
                         tachyons.push(left);
-                        // Visual testing
+                        tachyonSet.add(JSON.stringify(left));
                         trace = trace.slice(0, left.x) +  '|' + trace.slice(left.x + 1); 
                     }
-                    if (!tachyons.some(t => t.equal(right))) {
+                    if (!tachyonSet.has(JSON.stringify(right))) {
                         tachyons.push(right);
-                        // Visual testing
+                        tachyonSet.add(JSON.stringify(right));
                         trace = trace.slice(0, right.x) + '|' + trace.slice(right.x + 1);
                     }
                 } else {
-                    // Visual testing
                     trace = trace.slice(0, t.x) + '|' + trace.slice(t.x + 1);
                 }
 
@@ -187,7 +180,7 @@ function processTachyon(splitMap) {
     return tachyons;
 }
 
-function answer_part1() { // 1769 is not a valid response
+function answer_part1() {
     const input = readInput();
     const tachyons = processTachyon(input);
     fs.writeFileSync('output.txt', input.join('\n'), 'utf8');
@@ -196,6 +189,5 @@ function answer_part1() { // 1769 is not a valid response
         .map(t => JSON.stringify(t)));
     console.log(`Total tachyon splits: ${splitTachyonSet.size}`);
 }
-
 
 answer_part1()
