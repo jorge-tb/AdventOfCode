@@ -85,10 +85,6 @@ function euclidean(pointA, pointB) {
     );
 }
 
-
-const distanceMap = new Map();
-const key = (i, j) => [i, j].sort((a, b) => a - b);
-
 /**
  * 
  * @param {Array<Point3D>} points 
@@ -99,10 +95,8 @@ function closestPair(points, min=-1) {
     for (let i = 0; i < points.length; i++) {
         for (let j = 0; j < points.length; j++) {
             if (i === j) continue;
-            if (distanceMap.has(key(i, j))) continue;
 
             distance = euclidean(points[i], points[j]);
-            distanceMap.set(key(i, j), distance);
             if (minPair.distance > distance && distance > min)
                 minPair = { 
                     points: [points[i], points[j]],
@@ -125,8 +119,6 @@ function buildCircuits(points, limitConnections) {
     let totalShortestConnections = 0;
     while (!done && totalShortestConnections < limitConnections) {
         const { points: pair, distance } = closestPair(points, prevDistance);
-        console.log(JSON.stringify(pair));
-        console.log(prevDistance);
         if (pair.length === 0) {
             done = true;
         } else if (circuits.has(pair[0]) && circuits.has(pair[1])) {
