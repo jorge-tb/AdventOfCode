@@ -155,7 +155,53 @@ function answer_part1() {
     const circuits = buildCircuits(input, 1000);
     const circuitsDesc = circuits.sort((arrA, arrB) => arrB.length - arrA.length);
     const response = circuitsDesc[0].length * circuitsDesc[1].length * circuitsDesc[2].length;
-    console.log(`Response: ${response}`);
+    console.log(`Answer: ${response}`);
+}
+
+function answer_part2() {
+    const points = readInput();
+    const circuits = new Map();
+    let prevDistance = -1;
+    let done = false;
+    let lastPair;
+    while (!done) {
+        const { points: pair, distance } = closestPair(points, prevDistance);
+        if (pair.length === 0) {
+            done = true;
+        } else if (circuits.has(pair[0]) && circuits.has(pair[1])) {
+            let circuit0 = circuits.get(pair[0]);
+            let circuit1 = circuits.get(pair[1]);
+            if (circuit0 !== circuit1) {
+                // Concatenate both circuits
+                let mergeCircuit = circuit0.concat(circuit1);
+                // Update circuits entries to point the resulting merged circuit
+                mergeCircuit.forEach((point, _, arr) => circuits.set(point, arr));
+
+                if (mergeCircuit.length === points.length) {
+                    lastPair = pair;
+                    done = true;
+                }
+            }
+        } else if (circuits.has(pair[0])) {
+            let circuit0 = circuits.get(pair[0]);
+            circuit0.push(pair[1]);
+            circuits.set(pair[1], circuit0);
+        } else if (circuits.has(pair[1])) {
+            let circuit1 = circuits.get(pair[1]);
+            circuit1.push(pair[0]);
+            circuits.set(pair[0], circuit1);
+        } else {
+            circuits.set(pair[0], pair);
+            circuits.set(pair[1], pair);
+        }
+
+        prevDistance = distance;
+    }
+
+    console.log(`Last pair of points before connecting all junction boxes are: ${lastPair[0].toJSON()} and ${lastPair[1].toJSON()}`);
+    console.log(`Answer: ${lastPair[0].x * lastPair[1].x}`);
 }
 
 answer_part1();
+
+answer_part2();
