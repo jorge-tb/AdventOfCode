@@ -1,29 +1,21 @@
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { join, dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 function readInput() {
-    const textInput = fs.readFileSync('./input.txt', { encoding: 'utf-8' });
-    const input = textInput.split('\r').map((bank, index) => {
-        if (index > 0)
-            return bank.slice(1, bank.length);
-        return bank;
-});
-    return input;
-}
-
-function readExample() {
-    return [
-        '987654321111111',
-        '811111111111119',
-        '234234234234278',
-        '818181911112111'
-    ];
+    const textInput = fs.readFileSync(
+        join(__dirname, './input.txt'), { encoding: 'utf-8' });
+    return textInput.split(/\r?\n/);
 }
 
 /**
  * Example: from a bank=987654321111111 it returns 98, two elements that generate the biggest number.
  * @param {string} bank
  */
-function findMaximumJoltage(bank) {
+export function findMaximumJoltage_v1(bank) {
     const max = 9;
     let max1=0, max2=0;
     let current;
@@ -46,7 +38,7 @@ function findMaximumJoltage(bank) {
  * Example: from a bank=987654321111111 it returns 987654321111, twelve elements that generate the biggest number.
  * @param {string} bank 
  */
-function findMaximumJoltage_v2(bank, size=12) {
+export function findMaximumJoltage_v2(bank, size=12) {
     const maxs = Array(size).fill(0);
     const diff = bank.length - size;
     let current, offset, index;
@@ -76,7 +68,7 @@ function answer_part1() {
     let banks = readInput();
     let totalJoltage = 0;
     for (const bank of banks) {
-        totalJoltage += findMaximumJoltage(bank);
+        totalJoltage += findMaximumJoltage_v1(bank);
     }
     console.log(`(v1) Total joltage: ${totalJoltage}`);
 }
