@@ -1,24 +1,17 @@
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 function readInput() {
-    const textInput = fs.readFileSync('./input.txt', { encoding: 'utf-8' });
+    const textInput = fs.readFileSync(
+        join(__dirname, './input.txt'), { encoding: 'utf-8' });
     return textInput.split(',');
 }
 
-function readExample() {
-    return [
-        '11-22',
-        '95-115',
-        '998-1012',
-        '1188511880-1188511890',
-        '222220-222224',
-        '1698522-1698528',
-        '446443-446449',
-        '38593856-38593862'
-    ];
-}
-
-function searchInvalidIDs(input) {
+export function searchInvalidIDs_v1(input) {
     let invalids = [];
     input.forEach(range => {
         let [min, max] = range.split('-');
@@ -27,7 +20,7 @@ function searchInvalidIDs(input) {
     return invalids;
 }
 
-function searchInvalidIDs_v2(input) {
+export function searchInvalidIDs_v2(input) {
     let invalids = [];
     input.forEach(range => {
         let [min, max] = range.split('-');
@@ -97,7 +90,7 @@ function isInvalid_v2(n) {
 }
 
 function answer_part1() {
-    const invalidIDs = searchInvalidIDs(readInput());
+    const invalidIDs = searchInvalidIDs_v1(readInput());
     const invalidIDsSum = invalidIDs.reduce((prev, id) => prev + id, 0);
     console.log(`(v1) The sum up of all invalid identifiers is: ${invalidIDsSum}`);
 }
