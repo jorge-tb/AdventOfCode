@@ -1,6 +1,6 @@
 import data from './input.json' with { type: 'json' }
 
-class Dial {
+export class Dial {
     constructor(min, max, position=null) {
         if (min >= max) 
             throw new Error('Dial min must be strictly less than max');
@@ -35,7 +35,7 @@ const directions = {
  * @param {Dial} dial 
  * @returns Number of times dial marks 0 after any rotation in the sequence.
  */
-function computePassword(movements, dial) {
+export function computePassword_v1(movements, dial) {
     let direction;
     let totalMove;
     return movements.reduce((zeroCount, move) => {
@@ -55,7 +55,7 @@ function computePassword(movements, dial) {
     }, 0);
 }
 
-function computePassword_v2(movements, dial) {
+export function computePassword_v2(movements, dial) {
     const totalDial = dial.max - dial.min + 1;
 
     let direction;
@@ -94,7 +94,7 @@ function computePassword_v2(movements, dial) {
 
 function answer_part1() {
     const dial = new Dial(0, 99, 50);
-    const password = computePassword(data.input, dial);
+    const password = computePassword_v1(data.input, dial);
     console.log(`(v1) password = ${password}`);
 }
 
