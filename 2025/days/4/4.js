@@ -1,27 +1,13 @@
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-function readExample() {
-    const exampleText = `
-    ..@@.@@@@.
-    @@@.@.@.@@
-    @@@@@.@.@@
-    @.@@@@..@.
-    @@.@@@@.@@
-    .@@@@@@@.@
-    .@.@.@.@@@
-    @.@@@.@@@@
-    .@@@@@@@@.
-    @.@.@@@.@.`
-
-    const example = exampleText
-        .split('\n')
-        .map(l => l.trim());
-    return example
-        .slice(1, example.length);
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 function readInput() {
-    const inputText = fs.readFileSync('./input.txt', { encoding: 'utf-8' });
+    const inputText = fs.readFileSync(
+        join(__dirname, './input.txt'), { encoding: 'utf-8' });
     return inputText.split(/\r?\n/);
 }
 
@@ -29,7 +15,7 @@ function readInput() {
  * Generates a matrix where each element represents the count of contiguous '@' symbols at that position.
  * @param {Array<string>} input - Where each element is a line formed by @ and . symbols.
  */
-function buildAdjacentMatrix(input) {
+export function buildAdjacentMatrix(input) {
     const matrix = [];
     let line, symbol;
     for (let i = 0; i < input.length; i++) {
@@ -79,8 +65,42 @@ function isOccupied(matrix, i, j) {
         return false;
 }
 
+export function countLessThan4Contiguous(matrix) {
+    let total = 0;
+    matrix.forEach(row => {
+        row.forEach(e => {
+            if (e > 0 && e < 5)
+                total++;
+        });
+    });
+    return total;
+}
+
+export function countDeleteable(matrix) {
+    const toDelete = [];
+    let total = 0;
+    let done = false;
+    while (!done) {
+        matrix.forEach((row, i) => {
+            row.forEach((e, j) => {
+                if (e > 0 && e < 5)
+                    toDelete.push([i, j]);
+            });      
+        });
+
+        if (toDelete.length) {
+            total += toDelete.length;
+            toDelete.forEach(([i, j]) => remove(matrix, i, j));
+            toDelete.length = 0;
+        } else {
+            done = true;
+        }
+    }
+    return total;
+}
+
 /**
- * Removes an element located at [i][j] coordinates and decrements contigous occupied cells in one unit.
+ * Removes an element located at [i][j] coordinates and decrements contiguous occupied cells in one unit.
  * @param {Array<Array<number>>} matrix 
  * @param {number} i 
  * @param {number} j 
@@ -101,38 +121,14 @@ function remove(matrix, i, j) {
 function answer_part1() {
     const input = readInput();
     const matrix = buildAdjacentMatrix(input);
-    let total = 0;
-    matrix.forEach(row => {
-        row.forEach(e => {
-            if (e > 0 && e < 5)
-                total++;
-        });
-    });
-    console.log(`Total '@' elements with less than 4 contigous '@' is: ${total}`);
+    const total = countLessThan4Contiguous(matrix);
+    console.log(`Total '@' elements with less than 4 contiguous '@' is: ${total}`);
 }
 
 function answer_part2() {
     const input = readInput();
     const matrix = buildAdjacentMatrix(input);
-    const toDelete = [];
-    let total = 0;
-    let done = false;
-    while (!done) {
-        matrix.forEach((row, i) => {
-            row.forEach((e, j) => {
-                if (e > 0 && e < 5)
-                    toDelete.push([i, j]);
-            });      
-        });
-
-        if (toDelete.length) {
-            total += toDelete.length;
-            toDelete.forEach(([i, j]) => remove(matrix, i, j));
-            toDelete.length = 0;
-        } else {
-            done = true;
-        }
-    }
+    const total = countDeleteable(matrix);
     console.log(`Total '@' elements that can be removed is: ${total}`);
 }
 
