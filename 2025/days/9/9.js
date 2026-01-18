@@ -82,6 +82,36 @@ class Edge {
     }
 }
 
+class Rectangle {
+    /**
+     * Diagonal points.
+     * @param {Point} pointD0
+     * @param {Point} pointD1
+     */
+    constructor(pointD0, pointD1) {
+        const pointA = new Point(pointD0.x, pointD0.y);
+        const pointB = new Point(pointD1.x, pointD1.y);
+        const pointC = new Point(pointD0.x, pointD1.y);
+        const pointD = new Point(pointD1.x, pointD0.y);
+
+        this._points = [pointA, pointB, pointC, pointD];
+        this._edges = [
+            new Edge(pointA, pointD),
+            new Edge(pointC, pointB),
+            new Edge(pointA, pointC),
+            new Edge(pointD, pointB)
+        ];
+    }
+
+    get points() {
+        return this._points;
+    }
+
+    get edges() {
+        return this._edges;
+    }
+}
+
 function readInput() {
     const textInput = fs.readFileSync('./input.txt', { encoding: 'utf-8' });
     const input = textInput.split('\n').map(line => {
@@ -106,7 +136,8 @@ function area(point1, point2) {
 
 /**
  * Find out which pair of points can generate the biggest rectangle.
- * @param {Array<{ x: number, y: number }>} points 
+ * @param {Array<{ x: number, y: number }>} points
+ * @returns {{ area: number, points: [pointA: Point, pointB: Point]}} Returns the bounding points and the calculated area of the rectangle.
  */
 function findBiggestRectangle_v1(points) {
     let biggest = { area: 0 };
@@ -143,52 +174,77 @@ function findBiggestRectangle_v2(points) {
     // Rectangles sorted in descending order by area
     rectangles.sort((pointA, pointB) => pointB.area - pointA.area);
 
-    // Build graph (It's supposing all points can generate the same graph)
+    // Build graph (IMPORTANT: It's supposing all points can generate the same graph)
     const graph = buildGraph(new Point(points[0].x, points[0].y));
 
     // Get graph limits
     const limits = getLimitEdges(graph);
 
-    rectangles.find(rectangle => {
-        const pointA = new Point(rectangle.points[0].x, rectangle.points[0].y);
-        const pointB = new Point(rectangle.points[1].x, rectangle.points[1].y);
-        const pointC = new Point(rectangle.points[0].x, rectangle.points[1].y);
-        const pointD = new Point(rectangle.points[1].x, rectangle.points[0].y);
-
-        const rectangleEdges = [
-            new Edge(pointA, pointD),
-            new Edge(pointC, pointB),
-            new Edge(pointA, pointC),
-            new Edge(pointD, pointB)
-        ];
+    // Find biggest rectangle
+    const bigger = rectangles.find(r => {
+        const rectangle = new Rectangle(r.points[0], r.points[1]);
+        return !isOut(rectangle.edges, limits) && !isIntersected(rectangle.edges, graph);
     });
 
+    return bigger;
+}
 
-    // console.log(`rectangles = ${JSON.stringify(rectangles[0])} |${JSON.stringify(rectangles[rectangles.length - 1])} `);
+/**
+ * 
+ * @param {Array<Edge>} rectangle An array with four edges such that all togethers form a rectangle.
+ * @param {{ top: Edge, bottom: Edge, right: Edge, left: Edge }} limit 
+ */
+function isOut(rectangle, limits) {
+    const [cLeft, cRight] = rectangle
+        .filter(e => e.isColumn())
+        .sort((e1, e2) => e1.minX() - e2.minX());
+    const [rBottom, rTop] = rectangle
+        .filter(e => e.isRow())
+        .sort((e1, e2) => e1.minY() - e2.minY());
 
-    // const biggestRectangle = rectangles.find(rectangle => {
-    //     const pointA = new Point(rectangle.points[0].x, rectangle.points[0].y);
-    //     const pointB = new Point(rectangle.points[1].x, rectangle.points[1].y);
-    //     const pointC = new Point(rectangle.points[0].x, rectangle.points[1].y);
-    //     const pointD = new Point(rectangle.points[1].x, rectangle.points[0].y);
-    //     const rectangleEdges = [
-    //         new Edge(pointA, pointD),
-    //         new Edge(pointC, pointB),
-    //         new Edge(pointA, pointC),
-    //         new Edge(pointD, pointB)
-    //     ];
-    //     const graph = buildGraph(pointA);
-    //     if (graph.length > 1 && graph.every(e => Array.isArray(e))) {
-    //         console.log(`point ${JSON.stringify(pointA)} generates more than one graph`);
-    //         return false;
-    //     } else {
-    //         return rectangleEdges.every(e => isIn(e, graph));
-    //     }
-    // });
+    if (cLeft.minX() < limits.left.minX() ||
+        cLeft.minX() === limits.left.minX() && (cLeft.minY() < limits.left.minY() || cLeft.maxY() > limits.left.maxY()))
+        return true;
+    else if (cRight.minX() > limits.right.minX() ||
+        cRight.minX() === limits.right.minX() && (cRight.minY() < limits.right.minY() || cRight.maxY() > limits.right.maxY()))
+        return true;
+    else if (rBottom.minY() < limits.bottom.minY() ||
+        rBottom.minY() === limits.bottom.minY() && (rBottom.minX() < limits.bottom.minX() || rBottom.maxX() > limits.bottom.maxX()))
+        return true;
+    else if (rTop.minY() > limits.top.minY() ||
+        rTop.minY() === limits.top.minY() && (rTop.minX() < limits.top.minX() || rTop.maxX() > limits.top.maxX()))
+        return true;
+    else
+        return false;
+}
 
-    // console.log(`biggest rectangle: ${JSON.stringify(biggestRectangle)}`);
+function isIntersected(rectangle, graph) {
+    const [cLeft, cRight] = rectangle
+        .filter(e => e.isColumn())
+        .sort((e1, e2) => e1.minX() - e2.minX());
+    const [rBottom, rTop] = rectangle
+        .filter(e => e.isRow())
+        .sort((e1, e2) => e1.minY() - e2.minY());
 
-    // return biggestRectangle;
+    const isBetweenC = (columnEdge, limitL, limitR) => {
+        return limitL.minX() < columnEdge.minX() && limitR.minX() > columnEdge.minX() &&
+            !(columnEdge.maxY() <= limitL.minY() || columnEdge.minY() >= limitL.maxY())
+    };
+
+    const isBetweenR = (rowEdge, limitT, limitB) => {
+        return limitB.minY() < rowEdge.minY() && limitT.minY() > rowEdge.minY() &&
+            !(rowEdge.maxX() <= limitB.minX() || rowEdge.minX() >= limitB.maxX())
+    }
+
+    return graph.some(e => {
+        if (e.isColumn() && isBetweenC(e, cLeft, cRight)) {
+            return true;
+        } else if (e.isRow() && isBetweenR(e, rTop, rBottom)) {
+            return true;
+        } else {
+            return false;
+        }
+    });
 }
 
 /**
@@ -351,10 +407,15 @@ function tryConnectEdges(edge1, edge2) {
 function answer_part1() {
     const input = readInput();
     const biggestArea = findBiggestRectangle_v1(input);
-    console.log(`Biggest possible rectangle has an area of ${JSON.stringify(biggestArea)}`);
+    console.log(`Biggest rectangle has an area of ${JSON.stringify(biggestArea)}`);
+}
+
+function answer_part2() {
+    const input = readInput();
+    const biggestArea = findBiggestRectangle_v2(input);
+    console.log(`Biggest rectangle has an area of ${JSON.stringify(biggestArea)}`);
 }
 
 answer_part1();
 
-const example = readExample();
-findBiggestRectangle_v2(example);
+answer_part2();
