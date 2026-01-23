@@ -8,13 +8,17 @@ test('getInputFromFile', (t) => {
     assert.equal(machines.length, 3);
     assert.deepStrictEqual(
     {
-        activeState: machines[0].activeState,
-        state: machines[0].state,
+        activeLightState: machines[0].activeLightState,
+        lightState: machines[0].lightState,
+        activeJoltageState: machines[0].activeJoltageState,
+        joltageState: machines[0].joltageState,
         buttons: machines[0].buttons 
     }, 
     {
-        activeState: ['.', '#', '#', '.'],
-        state: ['.', '.', '.', '.'],
+        activeLightState: ['.', '#', '#', '.'],
+        lightState: ['.', '.', '.', '.'],
+        activeJoltageState: [3, 5, 4, 7],
+        joltageState: [0, 0, 0, 0],
         buttons: [
             Button.parse('(3)'),
             Button.parse('(1,3)'),
@@ -35,23 +39,33 @@ test('Machine', (t) => {
     t.test('press to turn ON', () => {
         const firstButton = machine.buttons[0];
         machine.press(firstButton);
-        assert.equal(machine.state[0], ON);
+        assert.equal(machine.lightState[0], ON);
     });
 
-    t.test('double press same button to return to original state', () => {
+    t.test('double press same button to return to original light state', () => {
         const firstButton = machine.buttons[0];
         machine.press(firstButton);
         machine.press(firstButton);
-        assert.equal(machine.state[0], OFF);
+        assert.equal(machine.lightState[0], OFF);
     });
 
-    t.test('active machine pressing buttons', () => {
+    t.test('active machine lights pressing buttons', () => {
         const buttons = machine.buttons;
         machine.press(buttons[2]);
-        assert.equal(machine.isActive(), true);
+        assert.equal(machine.hasLightsActive(), true);
     });
 
-    t.test('by default machine is not active', () => {
-        assert.equal(machine.isActive(), false);
+    t.test('by default machine lights are not active', () => {
+        assert.equal(machine.hasLightsActive(), false);
+    });
+
+    t.test('active machine joltage pressing buttons', () => {
+        const buttons = machine.buttons;
+        machine.press(buttons[0]);
+        assert.equal(machine.hasJoltageActive(), true);
+    });
+
+    t.test('by default machine joltage is set to 0s', () => {
+        assert.equal(machine.hasJoltageActive(), false);
     });
 });
