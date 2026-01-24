@@ -111,6 +111,51 @@ class Queue {
     }
 }
 
+export class PriorityQueue {
+    constructor() {
+        this._list = [];
+    }
+
+    enqueue(item, priority) {
+        const index = this._findIndex(priority);
+        this._list.splice(index, 0, { item, priority });
+    }
+
+    _findIndex(priority) {
+        if (this._list.length === 0)
+            return -1;
+        let idx = Math.floor(this._list.length / 2);
+        let found = false;
+        while (!found) {
+            if (this._list[idx].priority === priority)
+                found = true;
+            else if ((!found && idx === 0))
+                found = true;
+            else if (!found && (idx === this._list.length - 1))
+                found = true;
+            else {
+                if (this._list[idx].priority > priority)
+                    idx = (idx + this._list.length) / 2;
+                else
+                    idx = idx / 2;
+            }
+        }
+        return idx;
+    }
+
+    /**
+     * The item with highest priority.
+     * @return
+     */
+    dequeue() {
+        return this._list.shift().item;
+    }
+
+    get values() {
+        return [...this._list];
+    }
+}
+
 /**
  * 
  * @param {string} fileURL
@@ -163,6 +208,50 @@ function findShortestLightsActivation(machine) {
                     historyClone[i] = (historyClone[i] ?? 0) + 1;
                     queue.enqueue({ machine: clone, history: historyClone });
                     updateKey(stateKey, button);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Given a machine, this method returns the shortest button combination to active it.
+ * If machine is already active, an empty list is returned instead.
+ * @param {Machine} machine
+ * @returns {Array<Button>} Activation button combination.
+ */
+function findShortestJoltageActivation(machine) {
+    if (machine.hasJoltageActive()) 
+        return [];
+
+    const queue = new Queue();
+    queue.enqueue({ machine, history: {} });
+
+    const isJoltageExceeded = (machine) => {
+        return machine.joltageState
+            .some((val, idx) => val > machine.activeJoltageState[idx]);
+    }
+
+    // TODO: Create a priority queue such that:
+    // If joltage active state is: { J0, J1, J2, ..., JN }
+    // and joltage state is: { j0, j1, j2, ..., jn }
+    // Then diff=(J0-j0)+(J1-j1)+(J2-j2)+...+(JN-jn) can guide the priority.
+    // Lower diff the greatest priority.
+
+    while (true) {
+        const { machine: next, history } = queue.dequeue();
+        // If node is already active, the loop must finish
+        if (next.hasJoltageActive()) {
+            return history;
+        }
+        // Else, generate machine's light state combination through button press
+        else {
+            if (!isJoltageExceeded(next)) {
+                for (let i = 0; i < next.buttons.length; i++) {
+                    const button = next.buttons[i];
+                    const clone = next.clone();
+                    clone.press(button);
+                    queue.enqueue(clone);
                 }
             }
         }

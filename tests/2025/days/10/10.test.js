@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { getInputFromFile, Button, Machine, ON, OFF } from '../../../../2025/days/10/10.js';
+import { getInputFromFile, Button, Machine, PriorityQueue, ON, OFF } from '../../../../2025/days/10/10.js';
 
 test('getInputFromFile', (t) => {
     const fileURL = './example-input.txt';
@@ -67,5 +67,30 @@ test('Machine', (t) => {
 
     t.test('by default machine joltage is set to 0s', () => {
         assert.equal(machine.hasJoltageActive(), false);
+    });
+});
+
+test('PriorityQueue', (t) => {
+    t.test('create instance', () => {
+        const priorityQueue = new PriorityQueue();
+        assert.ok(priorityQueue);
+    });
+
+    t.test('enqueue', () => {
+        const priorityQueue = new PriorityQueue();
+        priorityQueue.enqueue({ value: 'World' }, 1);
+        priorityQueue.enqueue({ value: 'Hello' }, 2);
+        assert.deepStrictEqual(priorityQueue.values, [
+            { item: { value: 'Hello' }, priority: 2 },
+            { item: { value: 'World' }, priority: 1 }]);
+    });
+
+    t.test('dequeue', () => {
+        const priorityQueue = new PriorityQueue();
+        priorityQueue.enqueue({ value: 'World' }, 1);
+        priorityQueue.enqueue({ value: 'Hello' }, 2);
+        const item1 = priorityQueue.dequeue();
+        const item2 = priorityQueue.dequeue();
+        assert.equal(item1.value + ' ' + item2.value, 'Hello World');
     });
 });
