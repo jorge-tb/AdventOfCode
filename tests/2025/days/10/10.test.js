@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { getInputFromFile, Button, Machine, PriorityQueue, ON, OFF } from '../../../../2025/days/10/10.js';
+import { getInputFromFile, findShortestJoltageActivation, Button, Machine, PriorityQueue, ON, OFF } from '../../../../2025/days/10/10.js';
 
-test('getInputFromFile', (t) => {
+test('getInputFromFile', () => {
     const fileURL = './example-input.txt';
     const machines =  getInputFromFile(fileURL);
     assert.equal(machines.length, 3);
@@ -93,4 +93,15 @@ test('PriorityQueue', (t) => {
         const item2 = priorityQueue.dequeue();
         assert.equal(item1.value + ' ' + item2.value, 'Hello World');
     });
+});
+
+test('findShortestJoltageActivation', () => {
+    const buttonsDef = ['(3)', '(1, 3)', '(2)', '(2, 3)', '(0, 2)', '(0, 1)'];
+    const machine = new Machine(
+        ['.', '#', '#', '.'], 
+        [3, 5, 4, 7],
+        buttonsDef.map(def => Button.parse(def)));
+    const buttonHistory = findShortestJoltageActivation(machine);
+    const total = Object.values(buttonHistory).reduce((prev, curr) => prev + curr, 0);
+    assert.equal(total, 10);
 });
