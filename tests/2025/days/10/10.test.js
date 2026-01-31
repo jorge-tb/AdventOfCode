@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { getInputFromFile, findShortestJoltageActivation, Button, Machine, PriorityQueue, ON, OFF } from '../../../../2025/days/10/10.js';
+import { getInputFromFile, findShortestJoltageActivation, buildJoltageMatrix, Button, Machine, PriorityQueue, ON, OFF, gauss } from '../../../../2025/days/10/10.js';
 
 test('getInputFromFile', () => {
     const fileURL = './example-input.txt';
@@ -104,4 +104,35 @@ test('findShortestJoltageActivation', () => {
     const buttonHistory = findShortestJoltageActivation(machine);
     const total = Object.values(buttonHistory).reduce((prev, curr) => prev + curr, 0);
     assert.equal(total, 10);
+});
+
+test('findJoltageMatrix', () => {
+    const buttonsDef = ['(3)', '(1, 3)', '(2)', '(2, 3)', '(0, 2)', '(0, 1)'];
+    const machine = new Machine(
+        ['.', '#', '#', '.'], 
+        [3, 5, 4, 7],
+        buttonsDef.map(def => Button.parse(def)));
+    const matrix = buildJoltageMatrix(machine);
+    assert.deepStrictEqual(matrix, [
+        [0, 0, 0, 0, 1, 1, 3],
+        [0, 1, 0, 0, 0, 1, 5],
+        [0, 0, 1, 1, 1, 0, 4],
+        [1, 1, 0, 1, 0, 0, 7]
+    ]);
+});
+
+test('gauss', () => {
+    const matrix = [
+        [0, 0, 0, 0, 1, 1, 3],
+        [0, 1, 0, 0, 0, 1, 5],
+        [0, 0, 1, 1, 1, 0, 4],
+        [1, 1, 0, 1, 0, 0, 7]
+    ];
+    gauss(matrix);
+    assert.deepStrictEqual(matrix, [
+        [1, 1, 0, 1, 0, 0, 7],
+        [0, 1, 0, 0, 0, 1, 5],
+        [0, 0, 1, 1, 1, 0, 4],
+        [0, 0, 0, 0, 1, 1, 3]
+    ]);
 });
