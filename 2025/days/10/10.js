@@ -17,23 +17,27 @@ export class Machine {
      */
     constructor(activeLightState, activeJoltageState, buttons) {
         this.activeLightState = activeLightState;
-        this.lightState = Array(activeLightState.length).fill(OFF);
         this.activeJoltageState = activeJoltageState;
-        this.joltageState = Array(activeJoltageState.length).fill(0);
         this.buttons = buttons;
+        this.reset();
     }
 
     /**
      * Press button passed as argument. Button must belong to the machine.
      * @param {Button} button 
      */
-    press(button) {
+    press(button, times=1) {
         if (!this.buttons.includes(button))
             throw new Error(`Button passed as argument ${button} do not belong to this machine.`);
         for (const l of button.lights) {
-            this.lightState[l] = this.lightState[l] === OFF ? ON : OFF;
-            this.joltageState[l]++;
+            this.lightState[l] = (this.lightState[l] === OFF) && (times % 2 !== 0) ? ON : OFF;
+            this.joltageState[l] += times;
         }
+    }
+
+    reset() {
+        this.lightState = Array(this.activeLightState.length).fill(OFF);
+        this.joltageState = Array(this.activeJoltageState.length).fill(0);
     }
 
     clone() {
@@ -158,6 +162,16 @@ export class PriorityQueue {
 
     get values() {
         return [...this._list];
+    }
+}
+
+class Unknown {
+    constructor(value) {
+        this.value = value;
+    }
+
+    isFunction() {
+        return typeof value === 'function';
     }
 }
 
@@ -286,6 +300,95 @@ export function findShortestJoltageActivation(machine) {
 }
 
 /**
+ * Given a machine, this method returns the shortest button combination to active it.
+ * If machine is already active, an empty list is returned instead.
+ * @param {Machine} machine
+ * @returns {Array<{ button: Button, count: number }>} Activation button combination.
+ */
+export function findShortestJoltageActivation_v2(machine) {
+    if (machine.hasJoltageActive())
+        return [];
+
+    const eqSystem = buildJoltageMatrix(machine);
+    gauss(eqSystem);
+    const solutions = resolve(eqSystem);
+
+    // Is Finite
+    if (typeof solutions[0] === 'number') {
+        return solutions.map((s, idx) => new { button: machine.buttons[idx], count: s });
+    // Is Infinite
+    } else {
+        const hasValidJoltage = (machine) => {
+            return !machine.joltageState
+                .some((v, idx) => v > machine.activeJoltageState[idx]);
+        };
+        const defUnknowns = (candidate) => {
+            if (!candidate.length)
+                return;
+
+            let countDefined = 0;
+            for (let i = 0; i < solutions.length; i++) {
+                if (solutions[i].value === undefined) {
+                    solutions[i].value = candidate[countDefined];
+                    countDefined++;
+                }
+
+                if (countDefined === candidate.length) 
+                    break;
+            }
+        }
+        const key = (candidate) => candidate.join('');
+        const candidateSet = new Set();
+        const queue = new Queue();
+        const totalUnknowns = solutions.filter(s => s.value === undefined);
+        let candidate = Array(totalUnknowns.length).fill(0);
+        queue.enqueue(candidate);
+        candidateSet.add(key(candidate));
+
+        const successCandidates = [];
+        while (queue.values.length > 0) {
+            candidate = queue.dequeue();
+            defUnknowns(candidate);
+            machine.reset();
+            solutions.forEach((s, idx) => {
+                const { value } = s;
+                const button = machine.buttons[idx];
+                if (typeof value === 'number')
+                    machine.press(button, value);
+                else if (typeof value === 'function')
+                    machine.press(button, value());
+                else
+                    throw new Error('No valid solution found.');
+            });
+
+            if (machine.hasJoltageActive())
+                successCandidates.add(candidate);
+
+            // TODO: resolver looks like is not returning the correct functions when 
+            // there're infinte solutions.
+
+            // TODO: Is necessary to check if those undefined unknowns with the already
+            // assigned values are invalid by themselves without having in count those
+            // joltage values whicha are not increments by its press.
+            // Then generate all possible solutions, sum values, do Math.floor round
+            // and get the lower resulting solution combination.
+            if (hasValidJoltage(machine)) {
+                // Generate more candidates
+                for (let i = 0; i < candidate.length; i++) {
+                    const clone = [...candidate];
+                    clone[i]++;
+                    if (!candidateSet.has(key(clone))) {
+                        queue.enqueue(clone);
+                        candidateSet.add(key(clone));
+                    }
+                }
+            }
+        }
+        console.log(successCandidates);
+    } 
+}
+
+/**
  * Creates a linear extended equation matrix system generated by active joltage state and buttons constraints.
  * Example: matrix=[[1, 0, 0, 21],[0, 1, 0, 50],[0, 0, 1, 7]]
  * represents an equation system related to: Buttons (0) (1) (2) and Joltage {21, 50, 7}
@@ -311,11 +414,13 @@ export function buildJoltageMatrix(machine) {
  * @param {Array<Array<number>>} matrix 
  */
 export function gauss(matrix) {
-    matrix.sort((rowA, rowB) => rowA.indexOf(1) - rowB.indexOf(1));
+    const sort = (matrix) => matrix.sort(
+        (rowA, rowB) => rowA.findIndex(e => e) - rowB.findIndex(e => e));
 
     let pivot;
     let factor;
     for (let i = 0; i < matrix.length; i++) {
+        sort(matrix);
         for (let j = i; j < matrix.length; j++) {
             if (i === j) {
                 pivot = matrix[j][i];
@@ -336,10 +441,54 @@ export function gauss(matrix) {
  * However if the number of independent linear equations is lower than unknowns a list of functions is returned,
  * every function defines a certain xi=si(x0', x1', ..., xm') for a certain i-x and s where x0',x1', ... xm' are
  * those unknowns extra.
- * @param {Array<number> | Array<function>} gaussianMatrix 
+ * @param {Array<Array<number>>} gaussianMatrix
+ * @returns {Array<Unknown>} 
  */
-function resolver(gaussianMatrix) {
-    // TODO: To implement.
+export function resolve(gaussianMatrix) {
+    const rowLength = gaussianMatrix.length;
+    const columnLength = gaussianMatrix[0].length;
+    const solutions = Array(columnLength - 1)
+        .fill(undefined).map(v => new Unknown(v));
+
+    let currentUnknownIdx;
+    let relatedUnknownsIdx;
+    for (let i = rowLength - 1; i >= 0; i--) {
+        currentUnknownIdx = -1;
+        relatedUnknownsIdx = [];
+        for (let j = 0; j < columnLength; j++) {
+            // 1. It's the last column (Constants column)
+            if (j === columnLength - 1) {
+                const arr = [...relatedUnknownsIdx]; // It's empty
+                const arr2 = [];
+                arr2.push(currentUnknownIdx);
+                
+                solutions[currentUnknownIdx].value = () => {
+                    let s = arr2;
+
+                    const constant = gaussianMatrix[i][j];
+                    const factor = gaussianMatrix[i][arr2[0]];
+                    const rest = arr.reduce((prev, curr) => {
+                        const factor = gaussianMatrix[i][curr];
+                        const val = typeof solutions[curr].value === 'function' ? 
+                            solutions[curr].value() : solutions[curr].value;
+                        return prev + factor * val;
+                    }, 0);
+
+                    return (constant - rest) / factor;
+                }
+            // 2. It's not the last column and currentUnknown index has -1 value and current matrix position [i][j] has a value different of 0
+            } else if (currentUnknownIdx < 0 && gaussianMatrix[i][j]) {
+                // 2.1. Keep the current unknown index 
+                currentUnknownIdx = j;
+            // 3. It's 
+            } else if (currentUnknownIdx >= 0 && gaussianMatrix[i][j]) {
+                // solutions[j].value = undefined;
+                relatedUnknownsIdx.push(j);
+            }
+        }
+    }
+
+    return solutions;
 }
 
 
@@ -368,11 +517,25 @@ function answer_part2() {
     console.log(`The fewest button presses to correctly configure the joltage of all machines is: ${solution}`);
 }
 
+function answer_part2_v2() {
+    const machines = getInputFromFile(join(__dirname, './input.txt'), { encoding: 'utf-8' });
+    let solution = 0;
+    let shortestCombination;
+    for (const m of machines) {
+        shortestCombination = findShortestJoltageActivation_v2(m);
+        solution += Object.values(shortestCombination)
+            .reduce((prev, v) => prev + v, 0);
+    }
+    console.log(`The fewest button presses to correctly configure the joltage of all machines is: ${solution}`);
+}
+
 function isRunningFromTest() {
     return process.argv[1].endsWith('test.js');
 }
 
-if (!isRunningFromTest()) {
-    answer_part1();
-    answer_part2();
-}
+//answer_part2_v2();
+
+// if (!isRunningFromTest()) {
+//     answer_part1();
+//     answer_part2();
+// }
