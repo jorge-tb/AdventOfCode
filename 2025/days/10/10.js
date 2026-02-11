@@ -300,6 +300,34 @@ export function findShortestJoltageActivation(machine) {
 }
 
 /**
+ * 
+ * @param {Machine} machine 
+ * @param {Button} button 
+ * @returns {number} Valid limit button presses.
+ */
+function pressLimit(machine, button) {
+    if (machine.buttons.findIndex(b => b === button) < 0)
+        return 0;
+    return Math.min(
+        ...button.lights.map(e => machine.activeJoltageState[e])
+    );
+}
+
+/**
+ * 
+ * @param {Array<Unknown>} solutons 
+ * @returns {Array<number>} Undefined unknown indexes.
+ */
+function getUndefinedIndexes(solutions) {
+    const indexes = [];
+    solutions.forEach((s, i) => {
+        if (s.value === undefined)
+            indexes.push(i);
+    });
+    return indexes;
+}
+
+/**
  * Given a machine, this method returns the shortest button combination to active it.
  * If machine is already active, an empty list is returned instead.
  * @param {Machine} machine
@@ -312,44 +340,50 @@ export function findShortestJoltageActivation_v2(machine) {
     const eqSystem = buildJoltageMatrix(machine);
     gauss(eqSystem);
     const solutions = resolve(eqSystem);
+    const undefinedIndexes = getUndefinedIndexes(solutions);
+    const limitCandidate = undefinedIndexes.map((i) => {
+        return pressLimit(machine, machine.buttons[i])
+    });
 
+    const successCandidates = [];
     // Is Finite
-    if (typeof solutions[0] === 'number') {
-        return solutions.map((s, idx) => new { button: machine.buttons[idx], count: s });
+    if (!undefinedIndexes.length) {
+        successCandidates.push(solutions.map(s => s.value()));
+        console.log(successCandidates);
     // Is Infinite
     } else {
-        const hasValidJoltage = (machine) => {
-            return !machine.joltageState
-                .some((v, idx) => v > machine.activeJoltageState[idx]);
+        const constaints = {
+            allPositives: () => solutions.every(s => {
+                const val = typeof s.value === 'function' ? s.value() : s.value;
+                return val >= 0
+            }),
+            allIntegers: () => solutions.every(s => {
+                const val = typeof s.value === 'function' ? s.value() : s.value;
+                return Number.isInteger(val)
+            }),
+            areUnderLimit: () => undefinedIndexes.every((val, idx) => solutions[val].value <= limitCandidate[idx])
         };
-        const defUnknowns = (candidate) => {
-            if (!candidate.length)
-                return;
-
-            let countDefined = 0;
-            for (let i = 0; i < solutions.length; i++) {
-                if (solutions[i].value === undefined) {
-                    solutions[i].value = candidate[countDefined];
-                    countDefined++;
-                }
-
-                if (countDefined === candidate.length) 
-                    break;
-            }
+        const assign = (candidate) => {
+            undefinedIndexes.forEach((val, idx) => {
+                solutions[val].value = candidate[idx];
+            });
         }
-        const key = (candidate) => candidate.join('');
         const candidateSet = new Set();
         const queue = new Queue();
-        const totalUnknowns = solutions.filter(s => s.value === undefined);
-        let candidate = Array(totalUnknowns.length).fill(0);
-        queue.enqueue(candidate);
-        candidateSet.add(key(candidate));
+        const key = (candidate) => candidate.join('');
+        const enqueueAndCache = (candidate) => {
+            queue.enqueue(candidate);
+            candidateSet.add(key(candidate));
+        };
 
-        const successCandidates = [];
+        let candidate = Array(undefinedIndexes.length).fill(0);
+        enqueueAndCache(candidate);
+
         while (queue.values.length > 0) {
             candidate = queue.dequeue();
-            defUnknowns(candidate);
             machine.reset();
+            assign(candidate);
+
             solutions.forEach((s, idx) => {
                 const { value } = s;
                 const button = machine.buttons[idx];
@@ -361,18 +395,14 @@ export function findShortestJoltageActivation_v2(machine) {
                     throw new Error('No valid solution found.');
             });
 
-            if (machine.hasJoltageActive())
-                successCandidates.add(candidate);
+            if (constaints.allIntegers() &&
+                constaints.areUnderLimit() &&
+                constaints.allPositives()) {
+                successCandidates.push([...candidate]);
+                break; // tmp
+            }
 
-            // TODO: resolver looks like is not returning the correct functions when 
-            // there're infinte solutions.
-
-            // TODO: Is necessary to check if those undefined unknowns with the already
-            // assigned values are invalid by themselves without having in count those
-            // joltage values whicha are not increments by its press.
-            // Then generate all possible solutions, sum values, do Math.floor round
-            // and get the lower resulting solution combination.
-            if (hasValidJoltage(machine)) {
+            if (constaints.areUnderLimit()) {
                 // Generate more candidates
                 for (let i = 0; i < candidate.length; i++) {
                     const clone = [...candidate];
@@ -415,7 +445,14 @@ export function buildJoltageMatrix(machine) {
  */
 export function gauss(matrix) {
     const sort = (matrix) => matrix.sort(
-        (rowA, rowB) => rowA.findIndex(e => e) - rowB.findIndex(e => e));
+        (rowA, rowB) => {
+            const idxA = rowA.findIndex(e => e);
+            const idxB = rowB.findIndex(e => e);
+            // All-zero rows → send to bottom (use Infinity)
+            const a = idxA === -1 ? Infinity : idxA;
+            const b = idxB === -1 ? Infinity : idxB;
+            return a - b;
+        });
 
     let pivot;
     let factor;
@@ -433,6 +470,24 @@ export function gauss(matrix) {
             if (!pivot) break;
         }
     }
+
+    // Round
+    for (let i = 0; i < matrix.length; i++) {
+        for (let j = 0; j < matrix[0].length; j++) {
+            matrix[i][j] = parseFloat(matrix[i][j].toFixed(10));
+        }
+    }
+
+    // Remove full zero rows
+    const zeroRowsIdxs = matrix.reduce((prev, row, idx) => {
+        if (row.every(e => !e))
+            prev.push(idx);
+        return prev;
+    }, []);
+    zeroRowsIdxs.sort((a, b) => b - a);
+    zeroRowsIdxs.forEach(i => matrix.splice(i, 1));
+
+
 }
 
 /**
@@ -518,8 +573,7 @@ function answer_part2_v2() {
     let shortestCombination;
     for (const m of machines) {
         shortestCombination = findShortestJoltageActivation_v2(m);
-        solution += Object.values(shortestCombination)
-            .reduce((prev, v) => prev + v, 0);
+        console.log(shortestCombination);
     }
     console.log(`The fewest button presses to correctly configure the joltage of all machines is: ${solution}`);
 }
@@ -528,7 +582,16 @@ function isRunningFromTest() {
     return process.argv[1].endsWith('test.js');
 }
 
-//answer_part2_v2();
+const m = [
+    [1, 0, 1, 1, 1, 0, 0, 1, 1, 44],
+    [0, 1, 1, 1, 0, 1, 0, 0, 1, 44],
+    [0, 0,-1,-1, 1,-1, 1, 1,-1,  1],
+    [0, 0, 0,-1, 1,-1, 2, 1, 0, 11],
+    [0, 0, 0, 0, 1, 0,-1, 0, 0, 15],
+    [0, 0, 0, 0, 0, 0, 0, 0,-1, -1]
+]
+const s = resolve(m);
+answer_part2_v2();
 
 // if (!isRunningFromTest()) {
 //     answer_part1();
