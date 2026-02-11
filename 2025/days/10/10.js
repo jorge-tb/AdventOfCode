@@ -458,31 +458,26 @@ export function resolve(gaussianMatrix) {
         for (let j = 0; j < columnLength; j++) {
             // 1. It's the last column (Constants column)
             if (j === columnLength - 1) {
-                const arr = [...relatedUnknownsIdx]; // It's empty
-                const arr2 = [];
-                arr2.push(currentUnknownIdx);
-                
-                solutions[currentUnknownIdx].value = () => {
-                    let s = arr2;
-
-                    const constant = gaussianMatrix[i][j];
-                    const factor = gaussianMatrix[i][arr2[0]];
-                    const rest = arr.reduce((prev, curr) => {
-                        const factor = gaussianMatrix[i][curr];
-                        const val = typeof solutions[curr].value === 'function' ? 
-                            solutions[curr].value() : solutions[curr].value;
-                        return prev + factor * val;
-                    }, 0);
-
-                    return (constant - rest) / factor;
-                }
-            // 2. It's not the last column and currentUnknown index has -1 value and current matrix position [i][j] has a value different of 0
+                const func = ((relatedUnknownsIdx, currentUnknownIdx) => {
+                    return () => {
+                        const constant = gaussianMatrix[i][j];
+                        const factor = gaussianMatrix[i][currentUnknownIdx];
+                        const rest = relatedUnknownsIdx.reduce((prev, curr) => {
+                            const factor = gaussianMatrix[i][curr];
+                            const val = typeof solutions[curr].value === 'function' ? 
+                                solutions[curr].value() : solutions[curr].value;
+                            return prev + factor * val;
+                        }, 0);
+                        return (constant - rest) / factor;
+                    }
+                })([...relatedUnknownsIdx], currentUnknownIdx);
+                solutions[currentUnknownIdx].value = func;
+            // 2. It's not the last column and currentUnknown index has -1 value and current matrix position [i][j] has a non-zero value
             } else if (currentUnknownIdx < 0 && gaussianMatrix[i][j]) {
                 // 2.1. Keep the current unknown index 
                 currentUnknownIdx = j;
-            // 3. It's 
+            // 3. It's not the last column, current unknown has been fixed and current matrix position[i][j] has a non-zero value
             } else if (currentUnknownIdx >= 0 && gaussianMatrix[i][j]) {
-                // solutions[j].value = undefined;
                 relatedUnknownsIdx.push(j);
             }
         }
