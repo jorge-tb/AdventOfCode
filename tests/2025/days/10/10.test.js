@@ -181,13 +181,14 @@ test('resolve', () => {
 
     const expectedSolutions = [
         { free: 1, solutions: [15, 26, 8, 40, 13, -26, 3, 1] },
-        { free: 13, solutions: [9, 20, 20, 16, 1, 4, 9] }
+        { free: 13, solutions: [9, 20, 20, 16, 1, 4, 9, 13] }
     ];
     for (const expecSol of expectedSolutions) {
         solutions[matchIdx].value = expecSol.free;
         const areEqual = solutions.every((s, idx) => {
             const val = typeof s.value === 'function' ? s.value() : s.value;
-            return val === expecSol[idx];
+            console.log(`val=${val} expected=${expecSol.solutions[idx]}`)
+            return val === expecSol.solutions[idx];
         });
         assert.ok(areEqual, `When free variable is equal to ${expecSol.free}, solutions must be ${expecSol.solutions}`);
     }
