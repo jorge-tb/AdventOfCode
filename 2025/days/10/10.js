@@ -337,6 +337,8 @@ export function findShortestJoltageActivation_v2(machine) {
     if (machine.hasJoltageActive())
         return [];
 
+    // TODO: If undefined unknown is related to a button with lights dimension
+    // which is equal to the minimum size of machine's buttons, it can fixed to 0.
     const eqSystem = buildJoltageMatrix(machine);
     gauss(eqSystem);
     const solutions = resolve(eqSystem);
@@ -381,23 +383,11 @@ export function findShortestJoltageActivation_v2(machine) {
 
         while (queue.values.length > 0) {
             candidate = queue.dequeue();
-            machine.reset();
             assign(candidate);
 
-            solutions.forEach((s, idx) => {
-                const { value } = s;
-                const button = machine.buttons[idx];
-                if (typeof value === 'number')
-                    machine.press(button, value);
-                else if (typeof value === 'function')
-                    machine.press(button, value());
-                else
-                    throw new Error('No valid solution found.');
-            });
-
             if (constaints.allIntegers() &&
-                constaints.areUnderLimit() &&
-                constaints.allPositives()) {
+                constaints.allPositives() &&
+                constaints.areUnderLimit()) {
                 successCandidates.push([...candidate]);
                 break; // tmp
             }
@@ -407,10 +397,8 @@ export function findShortestJoltageActivation_v2(machine) {
                 for (let i = 0; i < candidate.length; i++) {
                     const clone = [...candidate];
                     clone[i]++;
-                    if (!candidateSet.has(key(clone))) {
-                        queue.enqueue(clone);
-                        candidateSet.add(key(clone));
-                    }
+                    if (!candidateSet.has(key(clone)))
+                        enqueueAndCache(clone);
                 }
             }
         }
@@ -486,8 +474,6 @@ export function gauss(matrix) {
     }, []);
     zeroRowsIdxs.sort((a, b) => b - a);
     zeroRowsIdxs.forEach(i => matrix.splice(i, 1));
-
-
 }
 
 /**
@@ -582,15 +568,6 @@ function isRunningFromTest() {
     return process.argv[1].endsWith('test.js');
 }
 
-const m = [
-    [1, 0, 1, 1, 1, 0, 0, 1, 1, 44],
-    [0, 1, 1, 1, 0, 1, 0, 0, 1, 44],
-    [0, 0,-1,-1, 1,-1, 1, 1,-1,  1],
-    [0, 0, 0,-1, 1,-1, 2, 1, 0, 11],
-    [0, 0, 0, 0, 1, 0,-1, 0, 0, 15],
-    [0, 0, 0, 0, 0, 0, 0, 0,-1, -1]
-]
-const s = resolve(m);
 answer_part2_v2();
 
 // if (!isRunningFromTest()) {
